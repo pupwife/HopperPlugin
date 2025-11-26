@@ -51,8 +51,9 @@ namespace Hopper
         private const int VK_SPACE = 0x20;
         private const uint KEYEVENTF_KEYUP = 0x0002;
         private readonly IntPtr ffxivWindowHandle;
-        private int frameCounter = 0;
-        private const int JUMP_INTERVAL = 3; // Jump every 3 frames to avoid spamming too fast
+        private bool wasInFlight = false;
+        private bool isHoppingEnabled = false;
+        private bool wasSpacePressed = false;
 
         public Plugin(
             IDalamudPluginInterface pluginInterface,
@@ -70,7 +71,6 @@ namespace Hopper
         private void SendSpacebarPress()
         {
             // Use SendInput for better compatibility with concurrent key presses
-            // Send both keydown and keyup in a single batch to avoid blocking
             INPUT[] inputs = new INPUT[2];
             
             // Key down
@@ -107,7 +107,7 @@ namespace Hopper
                 }
             };
             
-            // Send both events at once - SendInput handles this efficiently
+            // Send both events at once
             SendInput(2, inputs, Marshal.SizeOf(typeof(INPUT)));
         }
 
@@ -116,26 +116,49 @@ namespace Hopper
             IntPtr foregroundWindow = GetForegroundWindow();
             if (foregroundWindow == this.ffxivWindowHandle)
             {
-                // Check if spacebar is currently pressed (bit 15 is set when key is down)
+                // Check if spacebar is currently pressed
                 bool isSpacePressed = (GetAsyncKeyState(VK_SPACE) & 0x8000) != 0;
                 
-                // Continue jumping as long as spacebar is held, regardless of other key presses
-                if (isSpacePressed && !InFlight)
+                // Detect when spacebar is first pressed (edge detection)
+                bool spaceJustPressed = isSpacePressed && !wasSpacePressed;
+                
+                // Enable hopping when spacebar is pressed
+                if (isSpacePressed)
                 {
-                    frameCounter++;
-                    // Only send jump input every few frames to avoid spamming
-                    if (frameCounter >= JUMP_INTERVAL)
+                    isHoppingEnabled = true;
+                    
+                    // If spacebar was just pressed and character is on ground, trigger initial jump
+                    if (spaceJustPressed && !InFlight)
                     {
-                        // Send spacebar keypress using SendInput (better for concurrent keys)
                         SendSpacebarPress();
-                        frameCounter = 0; // Reset counter
+                        wasInFlight = false; // Reset flight state
                     }
                 }
                 else
                 {
-                    // Reset counter when spacebar is released or in flight
-                    frameCounter = 0;
+                    // Disable hopping when spacebar is released
+                    isHoppingEnabled = false;
+                    wasInFlight = false;
                 }
+                
+                // If hopping is enabled, detect landing and auto-jump
+                if (isHoppingEnabled)
+                {
+                    bool currentlyInFlight = InFlight;
+                    
+                    // Detect landing: was in flight, now not in flight = just landed
+                    if (wasInFlight && !currentlyInFlight)
+                    {
+                        // Just landed, trigger jump automatically
+                        SendSpacebarPress();
+                    }
+                    
+                    // Update flight state for next frame
+                    wasInFlight = currentlyInFlight;
+                }
+                
+                // Update previous spacebar state
+                wasSpacePressed = isSpacePressed;
             }
         }
 
