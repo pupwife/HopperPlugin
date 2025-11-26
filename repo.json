@@ -1,0 +1,25 @@
+{
+  "Plugins": [
+    {
+      "Author": "pupwife",
+      "Name": "Hopper",
+      "InternalName": "Hopper",
+      "AssemblyVersion": "2.0.0.0",
+      "Description": "Hop, skip, and jump your way through Eorzea! Just hold spacebar and watch your character bounce around like a happy bunny! 🐰✨",
+      "ApplicableVersion": "any",
+      "RepoUrl": "https://github.com/pupwife/HopperPlugin",
+      "DalamudApiLevel": 13,
+      "LoadRequiredState": 0,
+      "LoadSync": false,
+      "CanUnloadAsync": false,
+      "LoadPriority": 0,
+      "IconUrl": "https://raw.githubusercontent.com/pupwife/HopperPlugin/main/icon.png",
+      "Punchline": "Bouncy bouncy! Your character is now a certified hoppity-hopper! 🦘",
+      "AcceptsFeedback": false,
+      "DownloadLinkInstall": "https://github.com/pupwife/HopperPlugin/releases/latest/download/latest.zip",
+      "DownloadLinkUpdate": "https://github.com/pupwife/HopperPlugin/releases/latest/download/latest.zip",
+      "DownloadLinkTesting": "https://github.com/pupwife/HopperPlugin/releases/latest/download/latest.zip"
+    }
+  ]
+}
+

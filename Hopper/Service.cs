@@ -3,7 +3,7 @@ using Dalamud.IoC;
 using Dalamud.Plugin.Services;
 using Dalamud.Game.ClientState.Objects;
 
-namespace autobhop
+namespace Hopper
 {
     internal class Service
     {
