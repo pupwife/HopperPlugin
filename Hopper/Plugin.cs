@@ -21,39 +21,15 @@ namespace Hopper
         private static extern short GetAsyncKeyState(int vKey);
 
         [DllImport("user32.dll")]
-        private static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
+        private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
 
-        [StructLayout(LayoutKind.Sequential)]
-        private struct INPUT
-        {
-            public uint type;
-            public INPUTUNION u;
-        }
-
-        [StructLayout(LayoutKind.Explicit)]
-        private struct INPUTUNION
-        {
-            [FieldOffset(0)]
-            public KEYBDINPUT ki;
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        private struct KEYBDINPUT
-        {
-            public ushort wVk;
-            public ushort wScan;
-            public uint dwFlags;
-            public uint time;
-            public IntPtr dwExtraInfo;
-        }
-
-        private const int INPUT_KEYBOARD = 1;
         private const int VK_SPACE = 0x20;
         private const uint KEYEVENTF_KEYUP = 0x0002;
         private readonly IntPtr ffxivWindowHandle;
         private bool wasInFlight = false;
-        private bool isHoppingEnabled = false;
         private bool wasSpacePressed = false;
+        private int jumpCooldown = 0;
+        private const int JUMP_COOLDOWN_FRAMES = 5; // Wait 5 frames between jumps to avoid spamming
 
         public Plugin(
             IDalamudPluginInterface pluginInterface,
@@ -70,45 +46,9 @@ namespace Hopper
 
         private void SendSpacebarPress()
         {
-            // Use SendInput for better compatibility with concurrent key presses
-            INPUT[] inputs = new INPUT[2];
-            
-            // Key down
-            inputs[0] = new INPUT
-            {
-                type = INPUT_KEYBOARD,
-                u = new INPUTUNION
-                {
-                    ki = new KEYBDINPUT
-                    {
-                        wVk = VK_SPACE,
-                        wScan = 0,
-                        dwFlags = 0,
-                        time = 0,
-                        dwExtraInfo = IntPtr.Zero
-                    }
-                }
-            };
-            
-            // Key up
-            inputs[1] = new INPUT
-            {
-                type = INPUT_KEYBOARD,
-                u = new INPUTUNION
-                {
-                    ki = new KEYBDINPUT
-                    {
-                        wVk = VK_SPACE,
-                        wScan = 0,
-                        dwFlags = KEYEVENTF_KEYUP,
-                        time = 0,
-                        dwExtraInfo = IntPtr.Zero
-                    }
-                }
-            };
-            
-            // Send both events at once
-            SendInput(2, inputs, Marshal.SizeOf(typeof(INPUT)));
+            // Use keybd_event - simpler and more reliable
+            keybd_event(VK_SPACE, 0, 0, UIntPtr.Zero);
+            keybd_event(VK_SPACE, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
         }
 
         public void onFrameworkUpdate(IFramework framework)
@@ -118,46 +58,25 @@ namespace Hopper
             {
                 // Check if spacebar is currently pressed
                 bool isSpacePressed = (GetAsyncKeyState(VK_SPACE) & 0x8000) != 0;
+                bool currentlyInFlight = InFlight;
                 
-                // Detect when spacebar is first pressed (edge detection)
-                bool spaceJustPressed = isSpacePressed && !wasSpacePressed;
-                
-                // Enable hopping when spacebar is pressed
-                if (isSpacePressed)
+                // Decrement cooldown
+                if (jumpCooldown > 0)
                 {
-                    isHoppingEnabled = true;
-                    
-                    // If spacebar was just pressed and character is on ground, trigger initial jump
-                    if (spaceJustPressed && !InFlight)
-                    {
-                        SendSpacebarPress();
-                        wasInFlight = false; // Reset flight state
-                    }
-                }
-                else
-                {
-                    // Disable hopping when spacebar is released
-                    isHoppingEnabled = false;
-                    wasInFlight = false;
+                    jumpCooldown--;
                 }
                 
-                // If hopping is enabled, detect landing and auto-jump
-                if (isHoppingEnabled)
+                // If spacebar is held and we're not in flight (on ground) and cooldown is ready
+                if (isSpacePressed && !currentlyInFlight && jumpCooldown == 0)
                 {
-                    bool currentlyInFlight = InFlight;
-                    
-                    // Detect landing: was in flight, now not in flight = just landed
-                    if (wasInFlight && !currentlyInFlight)
-                    {
-                        // Just landed, trigger jump automatically
-                        SendSpacebarPress();
-                    }
-                    
-                    // Update flight state for next frame
-                    wasInFlight = currentlyInFlight;
+                    // Send jump
+                    SendSpacebarPress();
+                    jumpCooldown = JUMP_COOLDOWN_FRAMES; // Set cooldown
+                    wasInFlight = false; // Reset state
                 }
                 
-                // Update previous spacebar state
+                // Track flight state for debugging/edge cases
+                wasInFlight = currentlyInFlight;
                 wasSpacePressed = isSpacePressed;
             }
         }
