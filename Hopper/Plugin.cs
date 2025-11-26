@@ -27,9 +27,7 @@ namespace Hopper
         private const uint KEYEVENTF_KEYUP = 0x0002;
         private readonly IntPtr ffxivWindowHandle;
         private bool wasInFlight = false;
-        private bool wasSpacePressed = false;
-        private int jumpCooldown = 0;
-        private const int JUMP_COOLDOWN_FRAMES = 5; // Wait 5 frames between jumps to avoid spamming
+        private bool isHoppingActive = false; // Only set to true when spacebar is held, false when released
 
         public Plugin(
             IDalamudPluginInterface pluginInterface,
@@ -56,28 +54,48 @@ namespace Hopper
             IntPtr foregroundWindow = GetForegroundWindow();
             if (foregroundWindow == this.ffxivWindowHandle)
             {
-                // Check if spacebar is currently pressed
+                // ONLY check spacebar - ignore all other keys completely
                 bool isSpacePressed = (GetAsyncKeyState(VK_SPACE) & 0x8000) != 0;
                 bool currentlyInFlight = InFlight;
                 
-                // Decrement cooldown
-                if (jumpCooldown > 0)
+                // Enable hopping when spacebar is pressed, disable when released
+                // This state persists regardless of other key presses
+                if (isSpacePressed)
                 {
-                    jumpCooldown--;
+                    if (!isHoppingActive)
+                    {
+                        // Spacebar just pressed - activate hopping
+                        isHoppingActive = true;
+                        wasInFlight = currentlyInFlight;
+                        
+                        // If we're on the ground when spacebar is first pressed, jump immediately
+                        if (!currentlyInFlight)
+                        {
+                            SendSpacebarPress();
+                        }
+                    }
+                }
+                else
+                {
+                    // Spacebar released - deactivate hopping
+                    isHoppingActive = false;
+                    wasInFlight = false;
                 }
                 
-                // If spacebar is held and we're not in flight (on ground) and cooldown is ready
-                if (isSpacePressed && !currentlyInFlight && jumpCooldown == 0)
+                // If hopping is active (spacebar held), detect landing and auto-jump
+                // This ONLY responds to spacebar state and landing events - ignores all other keys
+                if (isHoppingActive)
                 {
-                    // Send jump
-                    SendSpacebarPress();
-                    jumpCooldown = JUMP_COOLDOWN_FRAMES; // Set cooldown
-                    wasInFlight = false; // Reset state
+                    // Detect landing: transition from in-flight to on-ground
+                    if (wasInFlight && !currentlyInFlight)
+                    {
+                        // Just landed - jump immediately
+                        SendSpacebarPress();
+                    }
+                    
+                    // Update flight state for next frame
+                    wasInFlight = currentlyInFlight;
                 }
-                
-                // Track flight state for debugging/edge cases
-                wasInFlight = currentlyInFlight;
-                wasSpacePressed = isSpacePressed;
             }
         }
 
