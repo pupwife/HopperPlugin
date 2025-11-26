@@ -21,8 +21,33 @@ namespace Hopper
         private static extern short GetAsyncKeyState(int vKey);
 
         [DllImport("user32.dll")]
-        private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
+        private static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
 
+        [StructLayout(LayoutKind.Sequential)]
+        private struct INPUT
+        {
+            public uint type;
+            public INPUTUNION u;
+        }
+
+        [StructLayout(LayoutKind.Explicit)]
+        private struct INPUTUNION
+        {
+            [FieldOffset(0)]
+            public KEYBDINPUT ki;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct KEYBDINPUT
+        {
+            public ushort wVk;
+            public ushort wScan;
+            public uint dwFlags;
+            public uint time;
+            public IntPtr dwExtraInfo;
+        }
+
+        private const int INPUT_KEYBOARD = 1;
         private const int VK_SPACE = 0x20;
         private const uint KEYEVENTF_KEYUP = 0x0002;
         private readonly IntPtr ffxivWindowHandle;
@@ -42,6 +67,54 @@ namespace Hopper
             Service.Framework.Update += onFrameworkUpdate;
         }
 
+        private void SendSpacebarPress()
+        {
+            // Use SendInput for better compatibility with concurrent key presses
+            // Send keydown and keyup separately with a small delay to avoid blocking other inputs
+            INPUT keyDown = new INPUT
+            {
+                type = INPUT_KEYBOARD,
+                u = new INPUTUNION
+                {
+                    ki = new KEYBDINPUT
+                    {
+                        wVk = VK_SPACE,
+                        wScan = 0,
+                        dwFlags = 0,
+                        time = 0,
+                        dwExtraInfo = IntPtr.Zero
+                    }
+                }
+            };
+            
+            INPUT keyUp = new INPUT
+            {
+                type = INPUT_KEYBOARD,
+                u = new INPUTUNION
+                {
+                    ki = new KEYBDINPUT
+                    {
+                        wVk = VK_SPACE,
+                        wScan = 0,
+                        dwFlags = KEYEVENTF_KEYUP,
+                        time = 0,
+                        dwExtraInfo = IntPtr.Zero
+                    }
+                }
+            };
+            
+            // Send keydown
+            INPUT[] downArray = new INPUT[] { keyDown };
+            SendInput(1, downArray, Marshal.SizeOf(typeof(INPUT)));
+            
+            // Small delay to allow other inputs to be processed
+            System.Threading.Thread.Sleep(1);
+            
+            // Send keyup
+            INPUT[] upArray = new INPUT[] { keyUp };
+            SendInput(1, upArray, Marshal.SizeOf(typeof(INPUT)));
+        }
+
         public void onFrameworkUpdate(IFramework framework)
         {
             IntPtr foregroundWindow = GetForegroundWindow();
@@ -57,9 +130,8 @@ namespace Hopper
                     // Only send jump input every few frames to avoid spamming
                     if (frameCounter >= JUMP_INTERVAL)
                     {
-                        // Send spacebar keypress
-                        keybd_event(VK_SPACE, 0, 0, UIntPtr.Zero);
-                        keybd_event(VK_SPACE, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+                        // Send spacebar keypress using SendInput (better for concurrent keys)
+                        SendSpacebarPress();
                         frameCounter = 0; // Reset counter
                     }
                 }

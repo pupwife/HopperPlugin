@@ -3,7 +3,7 @@
     "Author": "pupwife",
     "Name": "Hopper",
     "InternalName": "Hopper",
-    "AssemblyVersion": "2.2.0.0",
+    "AssemblyVersion": "2.3.0.0",
     "Punchline": "Bouncy bouncy! Your character is now a certified hoppity-hopper!",
     "Description": "Hop, skip, and jump your way through Eorzea! Just hold spacebar and watch your character bounce around like a happy bunny!",
     "ApplicableVersion": "any",
@@ -19,6 +19,6 @@
     "DownloadLinkUpdate": "https://github.com/pupwife/HopperPlugin/releases/latest/download/Hopper.zip",
     "DownloadLinkTesting": "https://github.com/pupwife/HopperPlugin/releases/latest/download/Hopper.zip",
     "RepoUrl": "https://github.com/pupwife/HopperPlugin",
-    "LastUpdate": "1764100000"
+    "LastUpdate": "1764100500"
   }
 ]

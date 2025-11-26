@@ -4,7 +4,7 @@
 
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
-    <Version>2.2.0.0</Version>
+    <Version>2.3.0.0</Version>
     <Description>Hop, skip, and jump your way through Eorzea! Just hold spacebar and watch your character bounce around like a happy bunny!</Description>
     <PackageProjectUrl>https://github.com/goatcorp/SamplePlugin</PackageProjectUrl>
     <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
