@@ -70,8 +70,11 @@ namespace Hopper
         private void SendSpacebarPress()
         {
             // Use SendInput for better compatibility with concurrent key presses
-            // Send keydown and keyup separately with a small delay to avoid blocking other inputs
-            INPUT keyDown = new INPUT
+            // Send both keydown and keyup in a single batch to avoid blocking
+            INPUT[] inputs = new INPUT[2];
+            
+            // Key down
+            inputs[0] = new INPUT
             {
                 type = INPUT_KEYBOARD,
                 u = new INPUTUNION
@@ -87,7 +90,8 @@ namespace Hopper
                 }
             };
             
-            INPUT keyUp = new INPUT
+            // Key up
+            inputs[1] = new INPUT
             {
                 type = INPUT_KEYBOARD,
                 u = new INPUTUNION
@@ -103,16 +107,8 @@ namespace Hopper
                 }
             };
             
-            // Send keydown
-            INPUT[] downArray = new INPUT[] { keyDown };
-            SendInput(1, downArray, Marshal.SizeOf(typeof(INPUT)));
-            
-            // Small delay to allow other inputs to be processed
-            System.Threading.Thread.Sleep(1);
-            
-            // Send keyup
-            INPUT[] upArray = new INPUT[] { keyUp };
-            SendInput(1, upArray, Marshal.SizeOf(typeof(INPUT)));
+            // Send both events at once - SendInput handles this efficiently
+            SendInput(2, inputs, Marshal.SizeOf(typeof(INPUT)));
         }
 
         public void onFrameworkUpdate(IFramework framework)
